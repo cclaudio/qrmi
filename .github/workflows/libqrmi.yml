@@ -1,0 +1,31 @@
+name: Build QRMI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y openssl cmake
+
+    - name: Checkout
+      uses: actions/checkout@v6
+      
+    - name: Setup Rust toolchain
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Rustfmt Check
+      uses: actions-rust-lang/rustfmt@v1
+      
+    - name: Build
+      run: cargo build --verbose
