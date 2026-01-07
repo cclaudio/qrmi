@@ -1,0 +1,14 @@
+name: Build and test artifacts on pull request
+on:
+  pull_request:
+    branches: [ "main" ]
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.ref }}-${{ github.head_ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  build-libqrmi:
+      name: Build libqrmi
+      uses: ./.github/workflows/build-libqrmi.yml
+
