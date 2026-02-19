@@ -1,0 +1,46 @@
+---
+name: Build C examples
+on:
+  workflow_call:
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    # the qrmi.h is required to build the C examples
+    - name: Download libqrmi-artifacts
+      uses: actions/download-artifact@v7
+      with:
+        name: libqrmi-artifacts
+
+    - name: Build examples/qrmi/c/config
+      working-directory: examples/qrmi/c/config
+      run: |
+        mkdir build ; cd build
+        cmake ..
+        make
+
+    - name: Build examples/qrmi/c/direct_access
+      working-directory: examples/qrmi/c/direct_access
+      run: |
+        mkdir build ; cd build
+        cmake ..
+        make
+
+    - name: Build examples/qrmi/c/pasqal_cloud
+      working-directory: examples/qrmi/c/pasqal_cloud
+      run: |
+        mkdir build ; cd build
+        cmake ..
+        make
+
+    - name: Build examples/qrmi/c/qiskit_runtime_service
+      working-directory: examples/qrmi/c/qiskit_runtime_service
+      run: |
+        mkdir build ; cd build
+        cmake ..
+        make
+
