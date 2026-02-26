@@ -15,7 +15,10 @@ pub(crate) mod consts;
 pub mod ibm;
 pub mod pasqal;
 
+#[cfg(not(test))]
 mod cext;
+#[cfg(test)]
+pub mod cext;
 pub mod models;
 #[cfg(feature = "pyo3")]
 pub mod pyext;

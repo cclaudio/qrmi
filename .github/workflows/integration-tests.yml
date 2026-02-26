@@ -1,0 +1,279 @@
+# QRMI Integration Tests CI/CD Workflow
+#
+# This workflow runs the integration test suite on every push and pull request.
+# It ensures that all quantum provider integrations work correctly.
+
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:  # Allow manual trigger
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  integration-tests:
+    name: Run Integration Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        rust: [stable, beta]
+      fail-fast: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+          components: rustfmt, clippy
+      
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+      
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-index-
+      
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-target-
+      
+      - name: Check formatting
+        run: cargo fmt -- --check
+      
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+      
+      - name: Build tests
+        run: cargo test --test lib --no-run
+      
+      - name: Run integration tests
+        run: cargo test --test lib -- --nocapture
+        env:
+          RUST_LOG: info
+      
+      - name: Run integration tests (verbose)
+        if: failure()
+        run: cargo test --test lib -- --nocapture
+        env:
+          RUST_LOG: debug
+  
+  integration-tests-by-provider:
+    name: Test Individual Providers
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        provider: [ibm_direct_access, ibm_qrs, pasqal_cloud]
+      fail-fast: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Run ${{ matrix.provider }} tests
+        run: cargo test --test lib ${{ matrix.provider }} -- --nocapture
+        env:
+          RUST_LOG: info
+  
+  c-ffi-tests:
+    name: C FFI Integration Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      
+      - name: Install C build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake
+      
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-c-ffi-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Run C FFI integration tests
+        run: cargo test --test integration c_ffi -- --nocapture
+        env:
+          RUST_LOG: info
+  
+  python-tests:
+    name: Python Integration Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install maturin
+          pip install -r python/tests/requirements-test.txt
+      
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-python-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Build Python module
+        run: maturin develop --features pyo3
+      
+      - name: Run Python integration tests
+        run: pytest python/tests/ -v --tb=short
+      
+      - name: Generate coverage report
+        if: always()
+        run: pytest python/tests/ --cov=qrmi --cov-report=xml --cov-report=term
+      
+      - name: Upload coverage
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          flags: python
+          fail_ci_if_error: false
+  
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      
+      - name: Install tarpaulin
+        run: cargo install cargo-tarpaulin
+      
+      - name: Generate coverage
+        run: cargo tarpaulin --test lib --out Xml --output-dir ./coverage
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage/cobertura.xml
+          fail_ci_if_error: false
+  
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [integration-tests, integration-tests-by-provider, c-ffi-tests, python-tests]
+    if: always()
+    
+    steps:
+      - name: Generate summary
+        run: |
+          echo "# Integration Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Execution Status" >> $GITHUB_STEP_SUMMARY
+          echo "- Rust Integration Tests: ${{ needs.integration-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Provider-Specific Tests: ${{ needs.integration-tests-by-provider.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- C FFI Tests: ${{ needs.c-ffi-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Python Tests: ${{ needs.python-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Coverage" >> $GITHUB_STEP_SUMMARY
+          echo "### Rust Core Tests" >> $GITHUB_STEP_SUMMARY
+          echo "- IBM Direct Access: 10 tests" >> $GITHUB_STEP_SUMMARY
+          echo "- IBM Qiskit Runtime Service: 13 tests" >> $GITHUB_STEP_SUMMARY
+          echo "- Pasqal Cloud: 11 tests" >> $GITHUB_STEP_SUMMARY
+          echo "- C FFI: 11 tests" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Python Binding Tests" >> $GITHUB_STEP_SUMMARY
+          echo "- Basic Bindings: 3 tests" >> $GITHUB_STEP_SUMMARY
+          echo "- IBM Direct Access: 7 tests" >> $GITHUB_STEP_SUMMARY
+          echo "- IBM Qiskit Runtime Service: 2 tests" >> $GITHUB_STEP_SUMMARY
+          echo "- Pasqal Cloud: 3 tests" >> $GITHUB_STEP_SUMMARY
+          echo "- Edge Cases: 4 tests" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Total: 45 Rust tests + 19 Python tests = 64 integration tests**" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Check test results
+        run: |
+          if [ "${{ needs.integration-tests.result }}" == "failure" ] || \
+             [ "${{ needs.integration-tests-by-provider.result }}" == "failure" ] || \
+             [ "${{ needs.c-ffi-tests.result }}" == "failure" ] || \
+             [ "${{ needs.python-tests.result }}" == "failure" ]; then
+            echo "❌ Some integration tests failed"
+            exit 1
+          else
+            echo "✅ All integration tests passed"
+          fi
+
+# Made with Bob
