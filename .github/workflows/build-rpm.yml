@@ -1,0 +1,168 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# (C) Copyright IBM Corporation 2026
+# This reusable workflow builds the project for a given Linux distribution and version.
+# It is intended to be called on pull requests for fast feedback.
+# For RPM packaging (release artifacts), use package-rpm.yml instead.
+#
+# It builds:
+#   - libqrmi.so and the C examples
+#   - QRMI binaries (task_runner, stubgen)
+#   - Python wheels
+#
+# Workflow inputs:
+# - [required] distro:          container image name  (e.g. almalinux, rockylinux)
+# - [required] distro-version:  OS major version      (e.g. 8, 9)
+# - [required] python-version:  Python version to build the wheels for (e.g. 3.12)
+#
+# Workflow artifacts produced:
+# - [uploaded] libqrmi-{distro}{distro-version}-artifacts  (libqrmi.so, qrmi.h)
+# - [uploaded] qrmi-wheels-{distro}{distro-version}        (qrmi-*.whl)
+#
+# Workflow dependencies:
+# - None. It does not depend on any other workflow.
+#
+# Example caller (on-pull-request.yml):
+#
+#   build-almalinux8:
+#     uses: ./.github/workflows/build-rpm.yml
+#     with:
+#       distro: almalinux
+#       distro-version: "8"
+#       python-version: "3.12"
+#
+#   build-rockylinux9:
+#     uses: ./.github/workflows/build-rpm.yml
+#     with:
+#       distro: rockylinux
+#       distro-version: "9"
+#       python-version: "3.12"
+name: Build for rpm-based Linux distributions
+on:
+  workflow_call:
+    inputs:
+      distro:
+        description: >-
+          Container image name for the target distribution (e.g. almalinux, rockylinux)
+        type: string
+        required: true
+      distro-version:
+        description: >-
+          Major OS version to build for (e.g. 8, 9)
+        type: string
+        required: true
+      python-version:
+        description: >-
+          Python version to build the wheels for (e.g. 3.12)
+        type: string
+        required: true
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    container:
+      image: ${{ inputs.distro }}:${{ inputs.distro-version }}
+    steps:
+    - name: Install prerequisites
+      run: |
+        dnf install -y \
+          rpm-build \
+          curl \
+          git \
+          python${{ inputs.python-version }} \
+          python${{ inputs.python-version }}-devel \
+          python${{ inputs.python-version }}-pip
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install build dependencies
+      run: dnf builddep -y packaging/rpm/qrmi.spec
+
+    - name: Setup Rust toolchain
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    # -----------------------------------------------------------------------
+    # libqrmi.so + Rust dependencies and examples
+    # -----------------------------------------------------------------------
+
+    - name: Build libqrmi.so (includes the rust dependencies and examples)
+      run: make build
+
+    - name: Upload libqrmi.so and qrmi.h
+      uses: actions/upload-artifact@v4
+      if: ${{ success() }}
+      with:
+        name: libqrmi-${{ inputs.distro }}${{ inputs.distro-version }}-artifacts
+        path: |
+          target/release/libqrmi.so
+          qrmi.h
+        if-no-files-found: error
+        retention-days: 5
+
+    # -----------------------------------------------------------------------
+    # C examples (depend on libqrmi.so and qrmi.h built above)
+    # -----------------------------------------------------------------------
+
+    - name: Build examples/qrmi/c/config
+      working-directory: examples/qrmi/c/config
+      run: |
+        mkdir build ; cd build
+        cmake ..
+        make
+
+    - name: Build examples/qrmi/c/direct_access
+      working-directory: examples/qrmi/c/direct_access
+      run: |
+        mkdir build ; cd build
+        cmake ..
+        make
+
+    - name: Build examples/qrmi/c/pasqal_cloud
+      working-directory: examples/qrmi/c/pasqal_cloud
+      run: |
+        mkdir build ; cd build
+        cmake ..
+        make
+
+    - name: Build examples/qrmi/c/qiskit_runtime_service
+      working-directory: examples/qrmi/c/qiskit_runtime_service
+      run: |
+        mkdir build ; cd build
+        cmake ..
+        make
+
+    # -----------------------------------------------------------------------
+    # QRMI binaries
+    # -----------------------------------------------------------------------
+
+    - name: Build task_runner and stubgen
+      run: make build-bins
+
+    # -----------------------------------------------------------------------
+    # Python wheels
+    # -----------------------------------------------------------------------
+
+    - name: Prepare venv
+      run: |
+        set -e
+        python${{ inputs.python-version }} -m pip install --upgrade pip setuptools wheel
+        python${{ inputs.python-version }} -m venv .venv
+        echo "PATH=${GITHUB_WORKSPACE}/.venv/bin:$PATH" >> ${GITHUB_ENV}
+
+    - name: Install python requirements
+      run: pip install -r requirements-dev.txt
+
+    - name: Build QRMI wheels
+      run: maturin build --release
+
+    - name: Upload QRMI wheels
+      uses: actions/upload-artifact@v4
+      if: ${{ success() }}
+      with:
+        name: qrmi-wheels-${{ inputs.distro }}${{ inputs.distro-version }}
+        path: target/wheels/qrmi-*.whl
+        if-no-files-found: error
+        retention-days: 5
+
