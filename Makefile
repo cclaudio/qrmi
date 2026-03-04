@@ -31,7 +31,7 @@ dist:
 	rm -rf $(DIST_DIR)/vendor
 
 dist-rhel-lib: build
-	TARBALL="$(DIST_DIR)/libqrmi-$(VERSION)-rhel8-x86_64.tar.gz"; \
+	TARBALL="$(DIST_DIR)/libqrmi-$(VERSION)-el8-x86_64.tar.gz"; \
 	WORKDIR="$(DIST_DIR)/libqrmi-$(VERSION)"; \
 	mkdir -p $$WORKDIR; \
 	cp target/release/libqrmi.so $$WORKDIR; \
