@@ -1,22 +1,31 @@
 ---
-# This reusable workflow runs Rust unittests on the libqrmi, binaries and dependencies.
+# This reusable workflow unittest all the Rust code
 #
 # Workflow inputs:
-# - None
+# - container-image
 #
 # Workflow artifacts produced:
 # - None
 #
 # Workflow dependencies:
 # - None. It does not depend on any other workflow.
+
 name: Unittest QRMI Rust code
 on:
   workflow_call:
+    inputs:
+      container-image:
+        description: >-
+          Container image to use for building (e.g., 'registry.access.redhat.com/ubi8/ubi:8.10' or 'ubuntu:24.04')
+        type: string
+        required: true
 env:
   CARGO_TERM_COLOR: always
 jobs:
   unittest:
     runs-on: ubuntu-24.04
+    container:
+      image: ${{ inputs.container-image }}
     steps:
     - name: Checkout
       uses: actions/checkout@v6
@@ -24,23 +33,8 @@ jobs:
     - name: Setup Rust toolchain
       uses: actions-rust-lang/setup-rust-toolchain@v1
 
-    - name: Unittest libqrmi.so (includes examples)
-      run: cargo test --all-targets --release
+    - name: Install build dependencies
+      run: ./tools/install-build-deps.sh
 
-    - name: Unittest task_runner
-      run: cargo test --bin task_runner --release --features="build-binary"
-
-    - name: Unittest stubgen
-      run: cargo test --bin stubgen --release --features="pyo3"
-
-    - name: Unittest direct_access_client
-      working-directory: dependencies/direct_access_client
-      run: cargo test --release
-
-    - name: Unittest pasqal_cloud_client
-      working-directory: dependencies/pasqal_cloud_client
-      run: cargo test --release
-
-    - name: Unittest qiskit_runtime_client
-      working-directory: dependencies/qiskit_runtime_client
-      run: cargo test --release
+    - name: Unittest all the rust code
+      run: make test-rust-all

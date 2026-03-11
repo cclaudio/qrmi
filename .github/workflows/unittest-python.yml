@@ -2,13 +2,15 @@
 # This reusable workflow runs Python unittests on the QRMI wheels package.
 #
 # Workflow inputs:
-# - [required] python-version: the Python version to lint the code
+# - python-version
+# - container-image
 #
 # Workflow artifacts produced:
 # - None
 #
 # Workflow dependencies:
-# - It downloads the qrmi-wheels artifact (uploaded by another workflow)
+# - qrmi-wheel
+
 name: Unittest the QRMI Python code
 on:
   workflow_call:
@@ -18,36 +20,53 @@ on:
           Python version to be used to unittest the code
         type: string
         required: true
+      container-image:
+        description: >-
+          Container image to use for building (e.g., 'registry.access.redhat.com/ubi8/ubi:8.10' or 'ubuntu:24.04')
+        type: string
+        required: true
 jobs:
   unittest:
     runs-on: ubuntu-24.04
+    container:
+      image: registry.access.redhat.com/ubi8/ubi:8.10
     steps:
     - name: Checkout
       uses: actions/checkout@v6
-
-    - name: Download QRMI wheels
-      uses: actions/download-artifact@v6
-      with:
-        name: qrmi-wheels
 
     - name: Setup Python ${{ inputs.python-version }}
       uses: actions/setup-python@v6
       with:
         python-version: ${{ inputs.python-version }}
 
-    - name: Prepare venv
+    - name: Install build dependencies
+      run: ./tools/install-build-deps.sh
+
+    - name: Get QRMI version
+      id: qrmi-version
       run: |
-        set -e
-        python -m pip install --upgrade pip setuptools wheel
-        python -m venv .venv
+        QRMI_VERSION=$(make --no-print-directory get-qrmi-version)
+        echo "value=${QRMI_VERSION}" >> ${GITHUB_OUTPUT}
+
+    - name: Get distro platform id
+      id: distro-platform-id
+      run: |
+        PLATFORM_ID=$(make --no-print-directory get-distro-platform-id)
+        echo "value=${PLATFORM_ID}" >> ${GITHUB_OUTPUT}
+
+    - name: Download QRMI wheels
+      uses: actions/download-artifact@v6
+      with:
+        name: qrmi-wheel-${{ steps.qrmi-version.outputs.value }}-py${{ inputs.python-version }}-${{ steps.distro-platform-id.outputs.value }}
+        path: target/wheels/
+
+    - name: Create venv
+      run: |
+        PYTHON_VERSION="${{ inputs.python-version }}" make create-venv
         echo "PATH=${GITHUB_WORKSPACE}/.venv/bin:$PATH" >> ${GITHUB_ENV}
 
-    - name: Install python requirements
-      run: pip install -r requirements-dev.txt
-
     - name: Install QRMI wheels
-      run: pip install qrmi-*.whl
+      run: make install-python-wheel
 
     - name: Unittest with pytest
-      run: pytest -v ./python
-
+      run: make test-python-wheel

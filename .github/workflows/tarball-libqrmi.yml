@@ -1,0 +1,65 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# (C) Copyright IBM Corporation 2026
+
+# This reusable workflow creates the libqrmi tarball for distribution
+#
+# Workflow inputs:
+# - container-image
+#
+# Workflow artifacts produced:
+# - libqrmi tarball for distribution
+#
+# Workflow dependencies:
+# - None. It does not depend on any other workflow.
+
+name: Build libqrmi tarball for distribution
+on:
+  workflow_call:
+    inputs:
+      container-image:
+        description: >-
+          Container image to use for building (e.g., 'registry.access.redhat.com/ubi8/ubi:8.10' or 'ubuntu:24.04')
+        type: string
+        required: true
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  libqrmi-tarball:
+    runs-on: ubuntu-24.04
+    container:
+      image: ${{ inputs.container-image }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Rust toolchain
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Install build dependencies
+      run: ./tools/install-build-deps.sh
+
+    - name: Get QRMI information
+      id: qrmi-info
+      run: |
+        QRMI_VERSION=$(make get-qrmi-version)
+        echo "version=$QRMI_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Get system information
+      id: sys-info
+      run: |
+        ARCH=$(arch)
+        PLATFORM=$(make get-platform-id)
+        echo "arch=${ARCH}" >> $GITHUB_OUTPUT
+        echo "platform=${PLATFORM}" >> $GITHUB_OUTPUT
+
+    - name: Build and create the libqrmi tarball for distribution
+      run: make tarball-libqrmi
+
+    - name: Upload libqrmi tarball
+      uses: actions/upload-artifact@v4
+      if: ${{ success() }}
+      with:
+        name: libqrmi-${{ steps.qrmi-info.outputs.version }}-${{ steps.sys-info.outputs.platform }}-${{ steps.sys-info.outputs.arch }}-tarball
+        path: libqrmi-${{ steps.qrmi-info.outputs.version }}-${{ steps.sys-info.outputs.platform }}-${{ steps.sys-info.outputs.arch }}.tar.gz
+        if-no-files-found: error

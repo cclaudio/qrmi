@@ -1,24 +1,26 @@
 ---
-# This reusable workflow runs Python format check and lint on the QRMI wheels package.
-# By keeping this separate from the build workflow, we can easily identify if the building or the linting failed.
+# SPDX-License-Identifier: Apache-2.0
+# (C) Copyright IBM Corporation 2026
+
+# This reusable workflow builds the QRMI Python wheel and creates a tarball for RHEL compatible distributions.
 #
 # Workflow inputs:
 # - python-version
 # - container-image
 #
 # Workflow artifacts produced:
-# - None
+# - qrmi wheel tarball for distributions
 #
 # Workflow dependencies:
-# - qrmi-wheel
+# - None. It does not depend on any other workflow.
 
-name: Lint and format check Python code
+name: Build QRMI wheel tarball for a RHEL compatible distribution
 on:
   workflow_call:
     inputs:
       python-version:
         description: >-
-          Python version to be used to lint the code
+          Python version to build the wheel
         type: string
         required: true
       container-image:
@@ -26,8 +28,10 @@ on:
           Container image to use for building (e.g., 'registry.access.redhat.com/ubi8/ubi:8.10' or 'ubuntu:24.04')
         type: string
         required: true
+env:
+  CARGO_TERM_COLOR: always
 jobs:
-  lint:
+  qrmi-wheel-tarball:
     runs-on: ubuntu-24.04
     container:
       image: ${{ inputs.container-image }}
@@ -62,23 +66,19 @@ jobs:
         echo "arch=${ARCH}" >> $GITHUB_OUTPUT
         echo "platform=${PLATFORM}" >> $GITHUB_OUTPUT
 
-    - name: Download QRMI wheel
-      uses: actions/download-artifact@v6
-      with:
-        name: qrmi-wheel-${{ steps.qrmi-info.outputs.version }}-${{ steps.qrmi-info.outputs.python_cp }}-${{ steps.sys-info.outputs.platform }}-${{ steps.sys-info.outputs.arch }}
-        path: target/wheels/
-
     - name: Create venv
       run: |
         PYTHON_VERSION="${{ inputs.python-version }}" make create-venv
         echo "PATH=${GITHUB_WORKSPACE}/.venv/bin:$PATH" >> ${GITHUB_ENV}
 
-    - name: Install QRMI wheel
-      run: PYTHON_VERSION=${{ inputs.python-version }} make install-python-wheel
+    - name: Build and create the QRMI wheel tarball for distribution
+      run: make tarball-qrmi-wheel
 
-    - name: Format checking with black
-      run: make fmt-python-wheel
-
-    - name: Linting with pylint
-      run: make lint-python-wheel
+    - name: Upload QRMI wheel tarball
+      uses: actions/upload-artifact@v6
+      if: ${{ success() }}
+      with:
+        name: qrmi-wheel-${{ steps.qrmi-info.outputs.version }}-${{ steps.qrmi-info.outputs.python_cp }}-${{ steps.sys-info.outputs.platform }}-${{ steps.sys-info.outputs.arch }}-tarball
+        path: qrmi-wheel-${{ steps.qrmi-info.outputs.version }}-${{ steps.qrmi-info.outputs.python_cp }}-${{ steps.sys-info.outputs.platform }}-${{ steps.sys-info.outputs.arch }}.tar.gz
+        if-no-files-found: error
 

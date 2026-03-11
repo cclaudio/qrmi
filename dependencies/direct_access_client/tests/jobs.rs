@@ -72,7 +72,7 @@ async fn test_list_jobs() {
                         "type": "s3_compatible",
                         "presigned_url": "https://s3endpoint/s3bucket/logs-d7f06eda-ddfe-412e-a94b-747da412a955"
                     },
-                },
+                },-
                 "status": "Failed",
                 "reason_message": "Reason why this job was failed.",
                 "reason_code": 1517,

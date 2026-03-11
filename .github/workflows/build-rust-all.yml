@@ -1,17 +1,16 @@
 ---
-# This reusable workflow runs Rust format check and lint on librqmi, dependencies, examples and binaries.
-# By keeping this separate from the build workflow, we can easily identify if the building or the linting failed.
+# This reusable workflow builds the libqrmi.so, binaries, Rust and C examples
 #
 # Workflow inputs:
 # - container-image
 #
-# Workflow artifacts produced:
+# Workflow artifacts:
 # - None
 #
 # Workflow dependencies:
-# - None. It does not depend on any other workflow.
+# - None. It does not dependend on any other workflow.
 
-name: Lint and format check Rust code
+name: Build all Rust code and the C examples
 on:
   workflow_call:
     inputs:
@@ -23,7 +22,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
 jobs:
-  lint:
+  build:
     runs-on: ubuntu-24.04
     container:
       image: ${{ inputs.container-image }}
@@ -33,15 +32,13 @@ jobs:
 
     - name: Setup Rust toolchain
       uses: actions-rust-lang/setup-rust-toolchain@v1
-      with:
-        components: rustfmt, clippy
 
     - name: Install build dependencies
       run: ./tools/install-build-deps.sh
-    
-    - name: Format checking all Rust code
-      run: make fmt-rust-all
 
-    - name: Linting all Rust code
-      run: make lint-rust-all
+    - name: Build all Rust code
+      run: make build-rust-all
 
+    # Requires the libqrmi.so and qrmi.h built in the previous step
+    - name: Build all C examples
+      run: make build-c-examples

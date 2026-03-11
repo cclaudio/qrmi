@@ -1,0 +1,109 @@
+---
+# This workflow defines the CI pipeline for nightly builds.
+# It builds libqrmi and tests with multiple Python versions.
+#
+# Workflow inputs:
+# - None
+#
+# Workflow artifacts produced:
+# - None
+#
+# Workflow dependencies:
+# - All workflows called in the jobs section
+
+name: Nightly build
+on:
+  schedule:
+    # Run at 2:00 AM UTC every day
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+jobs:
+
+  build-libqrmi:
+    if: github.repository_owner == 'qiskit-community'
+    name: Build libqrmi
+    strategy:
+      matrix:
+        container-image: [
+          'registry.access.redhat.com/ubi8/ubi:8.10',
+          'ubuntu:24.04'
+        ]
+    uses: ./.github/workflows/build-rust-all.yml
+    with:
+      container-image: ${{ matrix.container-image }}
+
+  lint-fmt-rust:
+    if: github.repository_owner == 'qiskit-community'
+    name: Lint and format check Rust code
+    strategy:
+      matrix:
+        container-image: [
+          'registry.access.redhat.com/ubi8/ubi:8.10',
+          'ubuntu:24.04'
+        ]
+    uses: ./.github/workflows/lint-fmt-rust.yml
+    with:
+      container-image: ${{ matrix.container-image }}
+
+  unittest-rust:
+    if: github.repository_owner == 'qiskit-community'
+    name: Unittest Rust code
+    strategy:
+      matrix:
+        container-image: [
+          'registry.access.redhat.com/ubi8/ubi:8.10',
+          'ubuntu:24.04'
+        ]
+    uses: ./.github/workflows/unittest-rust.yml
+    with:
+      container-image: ${{ matrix.container-image }}
+
+  build-wheels:
+    if: github.repository_owner == 'qiskit-community'
+    name: Build wheels
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+        container-image: [
+          'registry.access.redhat.com/ubi8/ubi:8.10',
+          'ubuntu:24.04'
+        ]
+    uses: ./.github/workflows/build-python-wheel.yml
+    with:
+      python-version: ${{ matrix.python-version }}
+      container-image: ${{ matrix.container-image }}
+
+  lint-fmt-python:
+    if: github.repository_owner == 'qiskit-community'
+    name: Lint and format check Python code
+    needs: build-wheels
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+        container-image: [
+          'registry.access.redhat.com/ubi8/ubi:8.10',
+          'ubuntu:24.04'
+        ]
+    uses: ./.github/workflows/lint-fmt-python.yml
+    with:
+      python-version: ${{ matrix.python-version }}
+      container-image: ${{ matrix.container-image }}
+
+  unittest-python:
+    if: github.repository_owner == 'qiskit-community'
+    name: Unittest Python code
+    needs: build-wheels
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+        container-image: [
+          'registry.access.redhat.com/ubi8/ubi:8.10',
+          'ubuntu:24.04'
+        ]
+    uses: ./.github/workflows/unittest-python.yml
+    with:
+      python-version: ${{ matrix.python-version }}
+      container-image: ${{ matrix.container-image }}
