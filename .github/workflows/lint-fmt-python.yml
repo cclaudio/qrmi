@@ -2,13 +2,15 @@
 # This reusable workflow runs Python format check and lint on the QRMI wheels package.
 #
 # Workflow inputs:
-# - [required] python-version: the Python version to lint the code
+# - [required] python-version
+# - [required] container-image
 #
 # Workflow artifacts produced:
 # - None
 #
 # Workflow dependencies:
 # - It downloads the qrmi-wheels artifact (uploaded by another workflow)
+
 name: Lint and format check Python code
 on:
   workflow_call:
@@ -18,9 +20,16 @@ on:
           Python version to be used to lint the code
         type: string
         required: true
+      container-image:
+        description: >-
+          Container image that will be used to run the workflow
+        type: string
+        required: true
 jobs:
   lint:
     runs-on: ubuntu-24.04
+    container:
+      image: ${{ inputs.container-image }}
     steps:
     - name: Checkout
       uses: actions/checkout@v6
@@ -37,6 +46,9 @@ jobs:
       uses: actions/setup-python@v6
       with:
         python-version: ${{ inputs.python-version }}
+
+    - name: Install bootstrap packages
+      run: ./tools/install_bootstrap_packages.sh
 
     - name: Prepare venv
       run: |
@@ -56,4 +68,3 @@ jobs:
 
     - name: Lint with pylint
       run: pylint ./python
-
