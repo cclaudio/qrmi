@@ -10,6 +10,7 @@
 BOOTSTRAP_PACKAGES="\
   gcc \
   make \
+  cmake \
 "
 
 # Check root privilege
