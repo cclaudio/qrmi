@@ -28,6 +28,9 @@ jobs:
     - name: Setup Rust toolchain
       uses: actions-rust-lang/setup-rust-toolchain@v1
 
+    - name: Install bootstrap packages
+      run: ./tools/install_bootstrap_packages.sh
+
     # --all-targets does not include the binaries, hence they need
     # to be built separately
     - name: Build libqrmi.so (includes the rust dependencies and examples)

@@ -33,6 +33,9 @@ jobs:
       with:
         python-version: ${{ inputs.python-version }}
 
+    - name: Install bootstrap packages
+      run: ./tools/install_bootstrap_packages.sh
+
     - name: Prepare venv
       run: |
         set -e

@@ -26,6 +26,9 @@ jobs:
       with:
         components: rustfmt, clippy
 
+    - name: Install bootstrap packages
+      run: ./tools/install_bootstrap_packages.sh
+
     - name: Format check libqrmi.so (includes dependencies, examples and binaries)
       run: cargo fmt --all --check --verbose
 
@@ -38,4 +41,3 @@ jobs:
 
     - name: Lint stubgen
       run:  cargo clippy --bin stubgen --features="pyo3" -- -D warnings
-
