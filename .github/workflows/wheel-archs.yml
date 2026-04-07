@@ -1,0 +1,31 @@
+---
+# This reusable workflow builds the python wheels for the QRMI package.
+#
+# Workflow inputs:
+# - [required] python-version
+# - [required] container-image
+#
+# Workflow artifacts produced:
+# - [uploaded] qrmi-wheels for the specified Python version. File: qrmi-*.whl
+#
+# Workflow dependencies:
+# - None. It does not depend on any other workflow.
+
+name: wheel-archs
+on:
+  [push]
+
+jobs:
+  build-wheels-linux:
+    if: github.repository_owner == 'cclaudio'
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+        runner: [ubuntu-24.04-ppc64le]
+    name: Build wheels for Linux
+    uses: ./.github/workflows/build-wheels-linux.yml
+    with:
+      python-version: ${{ matrix.python-version }}
+      runner: ${{ matrix.runner }}
+
+

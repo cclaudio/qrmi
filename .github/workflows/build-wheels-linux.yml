@@ -1,0 +1,58 @@
+---
+# This reusable workflow builds the python wheels for the QRMI package.
+#
+# Workflow inputs:
+# - [required] python-version
+# - [required] container-image
+#
+# Workflow artifacts produced:
+# - [uploaded] qrmi-wheels for the specified Python version. File: qrmi-*.whl
+#
+# Workflow dependencies:
+# - None. It does not depend on any other workflow.
+
+name: wheel-archs
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: >-
+          Python version to build the wheels
+        type: string
+        required: true
+      runner:
+        description: >-
+          Runner to use for the build
+        type: string
+        required: true
+
+jobs:
+  build-wheels-linux:
+    runs-on: ${{ inputs.runner }}
+    steps:
+
+    - name: System info
+      id: sysinfo
+      run: |
+       echo "SYS_ARCH=$(uname -m)" >> "$GITHUB_OUTPUT"
+
+    - uses: actions/checkout@v6
+
+    - name: Build wheels
+      uses: PyO3/maturin-action@v1
+      with:
+        target: ${{ steps.sysinfo.outputs.SYS_ARCH }}
+        manylinux: 2_28   # manylinux_2_28 is based on Almalinux 8
+        command: build
+        args: --release --locked -o dist --compatibility pypi -i python$${{ inputs.python-version }}
+
+    - name: Upload QRMI wheels
+      uses: actions/upload-artifact@v7
+      if: ${{ success() }}
+      with:
+        name: pypi-linux-${{ steps.sysinfo.outputs.SYS_ARCH }}
+        path: dist/qrmi-*.whl
+        if-no-files-found: error
+        retention-days: 1
+
+
