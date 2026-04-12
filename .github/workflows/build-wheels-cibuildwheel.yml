@@ -1,0 +1,26 @@
+---
+# Build python wheels on a specific runner
+#
+# Workflow inputs:
+# - [required] runner
+#
+# Workflow artifacts produced:
+# - [uploaded] wheels-<arch>
+#
+# Workflow dependencies:
+# - None. It does not depend on any other workflow.
+
+name: Build wheels
+on:
+  [push]
+
+jobs:
+  build-wheels:
+    uses: ./.github/workflows/build-wheels.yml
+    strategy:
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+        wheel-prefix: [release]
+    with:
+      runner: ${{ matrix.runner }}
+      wheel-prefix: ${{ matrix.wheel-prefix }}
