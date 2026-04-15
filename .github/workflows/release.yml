@@ -13,7 +13,7 @@
 
 name: Release
 on:
-  workflow_dispatch:
+  [push]
   
 jobs:
 
@@ -21,7 +21,7 @@ jobs:
   # It also provides the checked QRMI version to other jobs through
   # the needs field.
   valid-qrmi-version:
-    if: github.repository_owner == 'qiskit-community'
+    if: github.repository_owner == 'cclaudio'
     name: Check new QRMI version is valid
     runs-on: ubuntu-24.04
     outputs:
@@ -43,19 +43,19 @@ jobs:
           echo "QRMI version: $QRMI_VERSION"
 
   create-vendor-tarball:
-    if: github.repository_owner == 'qiskit-community'
+    if: github.repository_owner == 'cclaudio'
     name: Create vendor tarball
     needs: [valid-qrmi-version]
     uses: ./.github/workflows/tarball-vendor.yml
 
   create-libqrmi-tarball-rhel:
-    if: github.repository_owner == 'qiskit-community'
+    if: github.repository_owner == 'cclaudio'
     name: Create libqrmi tarball for RHEL compatible distributions
     needs: [valid-qrmi-version]
     uses: ./.github/workflows/tarball-libqrmi-el8.yml
       
   create-draft-release:
-    if: github.repository_owner == 'qiskit-community'
+    if: github.repository_owner == 'cclaudio'
     name: Create draft release and populate it with assets
     needs: [valid-qrmi-version, create-vendor-tarball, create-libqrmi-tarball-rhel]
     permissions:
@@ -94,7 +94,7 @@ jobs:
           gh release upload "v${{ needs.valid-qrmi-version.outputs.version }}" libqrmi-${{ needs.valid-qrmi-version.outputs.version }}-el8-x86_64.tar.gz --clobber
     
   publish-github:
-    if: github.repository_owner == 'qiskit-community'
+    if: github.repository_owner == 'cclaudio'
     name: Publish github release
     needs: [valid-qrmi-version, create-draft-release]
     permissions:
@@ -112,7 +112,7 @@ jobs:
         gh release edit "v${{ needs.valid-qrmi-version.outputs.version }}" --verify-tag --draft=false
 
   build-and-test-wheels:
-    if: github.repository_owner == 'qiskit-community'
+    if: github.repository_owner == 'cclaudio'
     needs: [valid-qrmi-version]
     runs-on: ubuntu-24.04
     steps:
@@ -138,7 +138,7 @@ jobs:
         retention-days: 1
 
   wheels-sdist:
-    if: github.repository_owner == 'qiskit-community'
+    if: github.repository_owner == 'cclaudio'
     needs: [valid-qrmi-version]
     runs-on: ubuntu-24.04
     steps:
@@ -160,12 +160,12 @@ jobs:
         retention-days: 1
 
   publish-pypi:
-    if: github.repository_owner == 'qiskit-community'
+    if: github.repository_owner == 'cclaudio'
     needs: [build-and-test-wheels, wheels-sdist, publish-github]
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/qrmi
+      url: https://pypi.org/project/myqrmi
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
@@ -185,7 +185,7 @@ jobs:
   # version released to pypi can be installed and downloaded correctly.
   # That could help to catch and address issues early.
   check-pypi-post-release:
-    if: github.repository_owner == 'qiskit-community'
+    if: github.repository_owner == 'cclaudio'
     needs: [publish-pypi, valid-qrmi-version]
     runs-on: ubuntu-latest
     steps:
@@ -197,5 +197,5 @@ jobs:
         python3.12 -m venv .venv_py312
         source .venv_py312/bin/activate
         pip install --upgrade pip
-        pip install qrmi==${{ needs.valid-qrmi-version.outputs.version }}
-        pip download qrmi==${{ needs.valid-qrmi-version.outputs.version }} --no-binary qrmi --no-deps
+        pip install myqrmi==${{ needs.valid-qrmi-version.outputs.version }}
+        pip download myqrmi==${{ needs.valid-qrmi-version.outputs.version }} --no-binary myqrmi --no-deps
