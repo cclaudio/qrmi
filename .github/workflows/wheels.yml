@@ -1,0 +1,217 @@
+---
+# Reusable workflow to build python wheels for the supported architectures
+
+name: Build wheels for the supported architectures
+on:
+
+  # ATTENTION:
+  # workflow_dispatch inputs are used to run this workflow manually from the GitHub UI
+  # workflow_call inputs are used to run this workflow from another workflow
+  # For feature parity, make sure to update the inputs in both of them.
+
+  workflow_dispatch:
+    inputs:
+      artifact-prefix:
+        description: >-
+          Prefix for the artifact name (e.g. pr, release)
+        type: string
+        default: pr
+        required: false
+      test:
+        description: >-
+          Whether to run tests after building the wheels
+        type: boolean
+        default: false
+        required: false
+      format-check:
+        description: >-
+          Whether to run black (format-check) on the python code
+        type: boolean
+        default: false
+        required: false
+      lint:
+        description: >-
+          Whether to run pylint on the wheels
+        type: boolean
+        default: false
+        required: false
+      optional-dependencies:
+        description: >-
+          Install wheels with the provided optional dependencies e.g. all, ibm, pascal
+        type: string
+        default: all
+        required: false
+      arch-x86_64:
+        description: >-
+          Build wheels for x86_64
+        type: boolean
+        default: true
+        required: false
+      # Enable this with caution. Many python wheels are not available in pypi for ppc64le
+      # and so they are built locally. Each python venv takes about 24 min to setup,
+      # which means about 2 hours total to test all python versions we support.
+      arch-ppc64le:
+        description: >-
+          Build wheels for ppc64le
+        type: boolean
+        default: false
+        required: false
+      arch-arm64:
+        description: >-
+          Build wheels for arm64
+        type: boolean
+        default: false
+        required: false
+
+  workflow_call:
+    inputs:
+      artifact-prefix:
+        description: >-
+          Prefix for the artifact name (e.g. pr, release)
+        type: string
+        default: pr
+        required: false
+      test:
+        description: >-
+          Whether to run tests after building the wheels
+        type: boolean
+        default: false
+        required: false
+      format-check:
+        description: >-
+          Whether to run black (format-check) on the python code
+        type: boolean
+        default: false
+        required: false
+      lint:
+        description: >-
+          Whether to run pylint on the wheels
+        type: boolean
+        default: false
+        required: false
+      optional-dependencies:
+        description: >-
+          Install wheels with the provided optional dependencies e.g. all, ibm, pascal
+        type: string
+        default: all
+        required: false
+      arch-x86_64:
+        description: >-
+          Build wheels for x86_64
+        type: boolean
+        default: true
+        required: false
+      # Enable this with caution. Many python wheels are not available in pypi for ppc64le
+      # and so they are built locally. Each python venv takes about 24 min to setup,
+      # which means about 2 hours total to test all python versions we support.
+      arch-ppc64le:
+        description: >-
+          Build wheels for ppc64le
+        type: boolean
+        default: false
+        required: false
+      arch-arm64:
+        description: >-
+          Build wheels for arm64
+        type: boolean
+        default: false
+        required: false
+
+jobs:
+  build-x86_64:
+    if: inputs.arch-x86_64 == true
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v6
+      with:
+        python-version: 3.12
+    - if: inputs.format-check == true
+      name: Use black to check formatting
+      run: |
+        export PYTHON_VERSION=3.12
+        make create-venv
+        make fmt-pypkg
+    - if: inputs.test == false
+      name: Skip wheels test
+      run: |
+         echo "CIBW_TEST_SKIP=cp*" >> $GITHUB_ENV
+    - if: inputs.lint == true
+      name: Lint wheels
+      run: |
+         echo "CIBW_BEFORE_TEST=pip install -r requirements-dev.txt && pylint ./python" >> $GITHUB_ENV
+    - uses: pypa/cibuildwheel@v3.4.1
+      env:
+        CIBW_TEST_EXTRAS: ${{ inputs.optional-dependencies }}
+    - if: ${{ success() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.artifact-prefix }}-wheels-ubuntu-24.04
+        path: ./wheelhouse/*.whl
+        if-no-files-found: error
+        retention-days: 1
+
+  build-ppc64le:
+    if: ${{ inputs.arch-ppc64le == true }}
+    runs-on: ubuntu-24.04-ppc64le
+    steps:
+    - uses: actions/checkout@v6
+    # cibuildwheel requires a recent python version to run, it supports the last three python releases.
+    # However, actions/setup-python@v6 does not support ppc64le yet
+    # https://github.com/actions/setup-python/issues/1154 
+    # For now we have to install python manually.
+    - name: Install python3 manually for cibuildwheel
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3 python3-pip python3-venv python3-dev
+    - if: ${{ inputs.format-check == true }}
+      name: Format check the .python directory
+      run: |
+        export PYTHON_VERSION=3.12
+        make create-venv
+        make fmt-pypkg
+    - if: ${{ inputs.test == false }}
+      name: Skip wheel tests
+      run: |
+         echo "CIBW_TEST_SKIP=cp*" >> $GITHUB_ENV
+    - uses: pypa/cibuildwheel@v3.4.1
+      env:
+        # Indirect package dependencies for the pulser-core wheel
+        CIBW_BEFORE_ALL: "dnf install -y openblas-devel libjpeg-turbo-devel zlib-devel"
+        CIBW_TEST_EXTRAS: all
+    - uses: actions/upload-artifact@v7
+      if: ${{ success() }}
+      with:
+        name: ${{ inputs.artifact-prefix }}-wheels-ubuntu-24.04-ppc64le
+        path: ./wheelhouse/*.whl
+        if-no-files-found: error
+        retention-days: 1
+
+  build-arm64:
+    if: ${{ inputs.arch-arm64 == true }}
+    runs-on: ubuntu-24.04-arm
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v6
+      with:
+        python-version: 3.12
+    - if: ${{ inputs.format-check == true }}
+      name: Format check the .python directory
+      run: |
+        export PYTHON_VERSION=3.12
+        make create-venv
+        make fmt-pypkg
+    - if: ${{ inputs.test == false }}
+      name: Skip wheel tests
+      run: |
+         echo "CIBW_TEST_SKIP=cp*" >> $GITHUB_ENV
+    - uses: pypa/cibuildwheel@v3.4.1
+      env:
+        CIBW_TEST_EXTRAS: all
+    - if: ${{ success() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.artifact-prefix }}-wheels-ubuntu-24.04-arm
+        path: ./wheelhouse/*.whl
+        if-no-files-found: error
+        retention-days: 1
