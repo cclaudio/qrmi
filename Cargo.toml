@@ -41,7 +41,7 @@ qiskit_runtime_client = { path = "dependencies/qiskit_runtime_client" }
 pasqal-cloud-api = { path = "dependencies/pasqal_cloud_client" }
 pasqal-local-api = { path = "dependencies/pasqal_local_client" }
 anyhow = { version = "1.0.97", features = ["backtrace"] }
-pyo3 = { version = "0.25.0", features = ["anyhow"], optional = true }
+pyo3 = { version = "0.25.0", features = ["anyhow", "extension-module"], optional = true }
 ffi_helpers = "0.3.0"
 async-trait = "0.1.88"
 dotenv = "0.15.0"
