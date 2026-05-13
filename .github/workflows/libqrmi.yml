@@ -53,12 +53,6 @@ on:
           - all
         default: none
         required: false
-      format-check:
-        description: >-
-          Format check all Rust code
-        type: boolean
-        default: false
-        required: false
       lint-target:
         description: >-
           Part of the Rust code to lint
@@ -68,6 +62,12 @@ on:
           - libqrmi-only
           - all
         default: none
+        required: false
+      format-check:
+        description: >-
+          Format check all Rust code
+        type: boolean
+        default: false
         required: false
       libqrmi-tarball:
         description: >-
@@ -121,17 +121,17 @@ on:
         type: string
         default: none
         required: false
-      format-check:
-        description: >-
-          Format check all Rust code
-        type: boolean
-        default: false
-        required: false
       lint-target:
         description: >-
           Part of the Rust code to lint [none, libqrmi-only, all]
         type: string
         default: none
+        required: false
+      format-check:
+        description: >-
+          Format check all Rust code
+        type: boolean
+        default: false
         required: false
       libqrmi-tarball:
         description: >-
