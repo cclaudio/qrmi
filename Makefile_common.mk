@@ -83,17 +83,18 @@ check-python-version-installed:
 	fi
 
 check-python-devel-installed:
-	@if command -v rpm >/dev/null 2>&1 ; then \
-	    if ! rpm -q python$(PYTHON_VERSION)-devel >/dev/null 2>&1 ; then \
-			echo "Error: package python$(PYTHON_VERSION)-devel not found, please install it"; \
-			exit 1; \
-		fi \
-	elif command -v dpkg >/dev/null 2>&1 ; then \
+	@if command -v dpkg >/dev/null 2>&1 ; then \
 	    if ! dpkg -l python$(PYTHON_VERSION)-dev >/dev/null 2>&1 ; then \
 			echo "Error: package python$(PYTHON_VERSION)-dev not found, please install it"; \
 			exit 1; \
 		fi \
+	elif command -v rpm >/dev/null 2>&1 ; then \
+	    if ! rpm -q python$(PYTHON_VERSION)-devel >/dev/null 2>&1 ; then \
+			echo "Error: package python$(PYTHON_VERSION)-devel not found, please install it"; \
+			exit 1; \
+		fi \
 	fi
+
 
 check-doxygen-installed:
 	@if ! command -v doxygen >/dev/null 2>&1 ; then \
