@@ -151,7 +151,7 @@ jobs:
     - uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.artifact-prefix }}-qrmi-${{ needs.info.outputs.qrmi-version }}-pypi-sdist
-        path: ./target/wheels/qrmi-${{ needs.info.outputs.qrmi-version }}.tar.gz
+        path: ./target/wheels/myqrmi-${{ needs.info.outputs.qrmi-version }}.tar.gz
         if-no-files-found: error
         retention-days: 1
 
@@ -180,7 +180,7 @@ jobs:
     - uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.artifact-prefix }}-qrmi-${{ needs.info.outputs.qrmi-version }}-wheels-x86_64
-        path: ./wheelhouse/qrmi-${{ needs.info.outputs.qrmi-version }}*.whl
+        path: ./wheelhouse/myqrmi-${{ needs.info.outputs.qrmi-version }}*.whl
         if-no-files-found: error
         retention-days: 1
 
@@ -221,7 +221,7 @@ jobs:
     - uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.artifact-prefix }}-qrmi-${{ needs.info.outputs.qrmi-version }}-wheels-ppc64le
-        path: ./wheelhouse/qrmi-${{ needs.info.outputs.qrmi-version }}*.whl
+        path: ./wheelhouse/myqrmi-${{ needs.info.outputs.qrmi-version }}*.whl
         if-no-files-found: error
         retention-days: 1
 
@@ -249,6 +249,6 @@ jobs:
     - uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.artifact-prefix }}-qrmi-${{ needs.info.outputs.qrmi-version }}-wheels-arm64
-        path: ./wheelhouse/qrmi-${{ needs.info.outputs.qrmi-version }}*.whl
+        path: ./wheelhouse/myqrmi-${{ needs.info.outputs.qrmi-version }}*.whl
         if-no-files-found: error
         retention-days: 1

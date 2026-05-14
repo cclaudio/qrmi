@@ -11,7 +11,7 @@
 
 name: Release
 on:
-  workflow_dispatch:
+  [push]
   
 jobs:
 
@@ -19,7 +19,7 @@ jobs:
   # It also provides the checked QRMI version to other jobs through
   # the needs field.
   qrmi-info:
-    if: github.repository_owner == 'qiskit-community'
+    if: github.repository_owner == 'cclaudio'
     runs-on: ubuntu-24.04
     outputs:
       valid-qrmi-version: ${{ steps.info.outputs.qrmi-version }}
@@ -36,7 +36,7 @@ jobs:
   # Build and test the libqrmi tarball for x86_64.
   # Create the vendor source tarball
   libqrmi-x86_64:
-    if: github.repository_owner == 'qiskit-community'
+    if: github.repository_owner == 'cclaudio'
     needs: [qrmi-info]
     uses: ./.github/workflows/libqrmi.yml
     with:
@@ -50,19 +50,18 @@ jobs:
   # Build the libqrmi tarball for non-x86_64 architectures.
   # No other task is performed (e.g. test or lint) as they can significantly increase the total time.
   libqrmi-other-archs:
-    if: github.repository_owner == 'qiskit-community'
+    if: github.repository_owner == 'cclaudio'
     needs: [qrmi-info]
     uses: ./.github/workflows/libqrmi.yml
     with:
       arch-x86_64: false
-      arch-ppc64le: true
       arch-arm64: true
       build-target: 'libqrmi-only'
       libqrmi-tarball: true
       artifact-prefix: 'release'
 
   publish-github:
-    if: github.repository_owner == 'qiskit-community'
+    if: github.repository_owner == 'cclaudio'
     name: Create draft release with artifacts and publish it
     needs: [qrmi-info, libqrmi-x86_64, libqrmi-other-archs]
     permissions:
@@ -97,7 +96,7 @@ jobs:
   # Build and test the wheels for x86_64
   # Create qrmi source distribution for PyPI
   wheels-x86_64:
-    if: github.repository_owner == 'qiskit-community'
+    if: github.repository_owner == 'cclaudio'
     needs: [qrmi-info]
     uses: ./.github/workflows/wheels.yml
     with:
@@ -109,17 +108,16 @@ jobs:
   # Build the wheels for non-x86_64
   # No other task is performed (e.g. test or lint) as they can increases the total time to around 4 hours
   wheels-other-archs:
-    if: github.repository_owner == 'qiskit-community'
+    if: github.repository_owner == 'cclaudio'
     needs: [qrmi-info]
     uses: ./.github/workflows/wheels.yml
     with:
       arch-x86_64: false
-      arch-ppc64le: true
       arch-arm64: true
       artifact-prefix: 'release'
 
   publish-pypi:
-    if: github.repository_owner == 'qiskit-community'
+    if: github.repository_owner == 'cclaudio'
     needs: [wheels-x86_64, wheels-other-archs, publish-github, qrmi-info]
     runs-on: ubuntu-24.04
     # ATTENTION:
@@ -127,7 +125,7 @@ jobs:
     # Trusted Publisher configuration in the PyPI qrmi account.
     environment:
       name: pypi
-      url: https://pypi.org/project/qrmi
+      url: https://pypi.org/project/myqrmi
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
@@ -153,7 +151,7 @@ jobs:
   # version released to pypi can be installed and downloaded correctly.
   # That could help to catch and address issues early.
   check-pypi-post-release:
-    if: github.repository_owner == 'qiskit-community'
+    if: github.repository_owner == 'cclaudio'
     needs: [publish-pypi, qrmi-info]
     runs-on: ubuntu-24.04
     steps:
@@ -165,5 +163,5 @@ jobs:
         python${{ needs.qrmi-info.outputs.python-version }} -m venv .venv
         source .venv/bin/activate
         pip install --upgrade pip
-        pip install qrmi==${{ needs.qrmi-info.outputs.valid-qrmi-version }}
-        pip download qrmi==${{ needs.qrmi-info.outputs.valid-qrmi-version }} --no-binary qrmi --no-deps
+        pip install myqrmi==${{ needs.qrmi-info.outputs.valid-qrmi-version }}
+        pip download myqrmi==${{ needs.qrmi-info.outputs.valid-qrmi-version }} --no-binary myqrmi --no-deps
