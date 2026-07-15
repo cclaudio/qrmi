@@ -463,6 +463,9 @@ fn qrmi(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyResourceDef>()?;
     m.add_class::<PyResourceProvider>()?;
     m.add_class::<PyConfig>()?;
+    m.add("QRMI_API_VERSION_MAJOR", crate::QRMI_API_VERSION_MAJOR)?;
+    m.add("QRMI_API_VERSION_MINOR", crate::QRMI_API_VERSION_MINOR)?;
+    m.add("QRMI_API_VERSION_PATCH", crate::QRMI_API_VERSION_PATCH)?;
     Ok(())
 }
 define_stub_info_gatherer!(stub_info);

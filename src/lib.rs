@@ -29,6 +29,14 @@ use crate::models::{Payload, ResourceType, Target, TaskResult, TaskStatus};
 use anyhow::Result;
 use async_trait::async_trait;
 
+/// Public QRMI API version
+///
+/// The version is independent of the crate/package version and reflects
+/// the stability of the public QRMI API.
+pub const QRMI_API_VERSION_MAJOR: u32 = 0;
+pub const QRMI_API_VERSION_MINOR: u32 = 1;
+pub const QRMI_API_VERSION_PATCH: u32 = 0;
+
 /// Defines interfaces to quantum resources.
 #[async_trait]
 pub trait QuantumResource: Send + Sync {

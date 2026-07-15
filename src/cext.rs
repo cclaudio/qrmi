@@ -261,6 +261,24 @@ pub unsafe extern "C" fn qrmi_string_array_free(
     ReturnCode::Success
 }
 
+/// @ingroup Qrmi
+/// MAJOR component of the QRMI public API version
+/// @version > 0.19.1
+#[no_mangle]
+pub static QRMI_API_VERSION_MAJOR: u32 = crate::QRMI_API_VERSION_MAJOR;
+
+/// @ingroup Qrmi
+/// MINOR component of the QRMI public API version
+/// @version > 0.19.1
+#[no_mangle]
+pub static QRMI_API_VERSION_MINOR: u32 = crate::QRMI_API_VERSION_MINOR;
+
+/// @ingroup Qrmi
+/// PATCH component of the QRMI public API version
+/// @version > 0.19.1
+#[no_mangle]
+pub static QRMI_API_VERSION_PATCH: u32 = crate::QRMI_API_VERSION_PATCH;
+
 /// @ingroup QrmiConfig
 /// Loads qrmi_config.json and returns it as Config.
 ///
